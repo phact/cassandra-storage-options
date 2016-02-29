@@ -3,6 +3,7 @@ import java.io.{BufferedReader, FileReader}
 import java.nio.ByteBuffer
 import org.joda.time.DateTime
 import org.velvia.filo._
+import org.velvia.filo.VectorInfo
 import play.api.libs.iteratee.Iteratee
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -11,76 +12,76 @@ import scala.util.Try
 
 object GdeltSchema {
   val schema = Seq(
-    IngestColumn("globalEventId", classOf[String]),
-    IngestColumn("sqlDate",       classOf[String]),
-    IngestColumn("monthYear",     classOf[Int]),
-    IngestColumn("year",          classOf[Int]),
-    IngestColumn("fractionDate",  classOf[Double]),
-    IngestColumn("a1Code",    classOf[String]),
-    IngestColumn("a1Name",    classOf[String]),
-    IngestColumn("a1CountryCode",    classOf[String]),
-    IngestColumn("a1KnownGroupCode", classOf[String]),
-    IngestColumn("a1EthnicCode",    classOf[String]),
-    IngestColumn("a1Religion1Code",    classOf[String]),
-    IngestColumn("a1Religion2Code",    classOf[String]),
-    IngestColumn("a1Type1Code",    classOf[String]),
-    IngestColumn("a1Type2Code",    classOf[String]),
-    IngestColumn("a1Type3Code",    classOf[String]),
-    IngestColumn("a2Code",    classOf[String]),
-    IngestColumn("a2Name",    classOf[String]),
-    IngestColumn("a2CountryCode",    classOf[String]),
-    IngestColumn("a2KnownGroupCode", classOf[String]),
-    IngestColumn("a2EthnicCode",    classOf[String]),
-    IngestColumn("a2Religion1Code",  classOf[String]),
-    IngestColumn("a2Religion2Code",  classOf[String]),
-    IngestColumn("a2Type1Code",  classOf[String]),
-    IngestColumn("a2Type2Code",  classOf[String]),
-    IngestColumn("a2Type3Code",  classOf[String]),
+    VectorInfo("globalEventId", classOf[String]),
+    VectorInfo("sqlDate",       classOf[String]),
+    VectorInfo("monthYear",     classOf[Int]),
+    VectorInfo("year",          classOf[Int]),
+    VectorInfo("fractionDate",  classOf[Double]),
+    VectorInfo("a1Code",    classOf[String]),
+    VectorInfo("a1Name",    classOf[String]),
+    VectorInfo("a1CountryCode",    classOf[String]),
+    VectorInfo("a1KnownGroupCode", classOf[String]),
+    VectorInfo("a1EthnicCode",    classOf[String]),
+    VectorInfo("a1Religion1Code",    classOf[String]),
+    VectorInfo("a1Religion2Code",    classOf[String]),
+    VectorInfo("a1Type1Code",    classOf[String]),
+    VectorInfo("a1Type2Code",    classOf[String]),
+    VectorInfo("a1Type3Code",    classOf[String]),
+    VectorInfo("a2Code",    classOf[String]),
+    VectorInfo("a2Name",    classOf[String]),
+    VectorInfo("a2CountryCode",    classOf[String]),
+    VectorInfo("a2KnownGroupCode", classOf[String]),
+    VectorInfo("a2EthnicCode",    classOf[String]),
+    VectorInfo("a2Religion1Code",  classOf[String]),
+    VectorInfo("a2Religion2Code",  classOf[String]),
+    VectorInfo("a2Type1Code",  classOf[String]),
+    VectorInfo("a2Type2Code",  classOf[String]),
+    VectorInfo("a2Type3Code",  classOf[String]),
 
     // Cols 25-34
-    IngestColumn("isRootEvent",  classOf[Int]),
-    IngestColumn("eventCode",  classOf[String]),
-    IngestColumn("eventBaseCode",  classOf[String]),
-    IngestColumn("eventRootCode",  classOf[String]),
-    IngestColumn("quadClass",  classOf[Int]),
-    IngestColumn("goldsteinScale",  classOf[Double]),
-    IngestColumn("numMentions",  classOf[Int]),
-    IngestColumn("numSources",  classOf[Int]),
-    IngestColumn("numArticles",  classOf[Int]),
-    IngestColumn("avgTone",  classOf[Double]),
+    VectorInfo("isRootEvent",  classOf[Int]),
+    VectorInfo("eventCode",  classOf[String]),
+    VectorInfo("eventBaseCode",  classOf[String]),
+    VectorInfo("eventRootCode",  classOf[String]),
+    VectorInfo("quadClass",  classOf[Int]),
+    VectorInfo("goldsteinScale",  classOf[Double]),
+    VectorInfo("numMentions",  classOf[Int]),
+    VectorInfo("numSources",  classOf[Int]),
+    VectorInfo("numArticles",  classOf[Int]),
+    VectorInfo("avgTone",  classOf[Double]),
 
     // Cols 35-41
-    IngestColumn("a1geoType",  classOf[String]),
-    IngestColumn("a1fullName",  classOf[String]),
-    IngestColumn("a1gcountryCode",  classOf[String]),
-    IngestColumn("a1adm1Code",  classOf[String]),
-    IngestColumn("a1lat",  classOf[Double]),
-    IngestColumn("a1long",  classOf[Double]),
-    IngestColumn("a1featureID",  classOf[String]),
+    VectorInfo("a1geoType",  classOf[String]),
+    VectorInfo("a1fullName",  classOf[String]),
+    VectorInfo("a1gcountryCode",  classOf[String]),
+    VectorInfo("a1adm1Code",  classOf[String]),
+    VectorInfo("a1lat",  classOf[Double]),
+    VectorInfo("a1long",  classOf[Double]),
+    VectorInfo("a1featureID",  classOf[String]),
 
     // Cols 42-48
-    IngestColumn("a2geoType",  classOf[String]),
-    IngestColumn("a2fullName",  classOf[String]),
-    IngestColumn("a2gcountryCode",  classOf[String]),
-    IngestColumn("a2adm1Code",  classOf[String]),
-    IngestColumn("a2lat",  classOf[Double]),
-    IngestColumn("a2long",  classOf[Double]),
-    IngestColumn("a2featureID",  classOf[String]),
+    VectorInfo("a2geoType",  classOf[String]),
+    VectorInfo("a2fullName",  classOf[String]),
+    VectorInfo("a2gcountryCode",  classOf[String]),
+    VectorInfo("a2adm1Code",  classOf[String]),
+    VectorInfo("a2lat",  classOf[Double]),
+    VectorInfo("a2long",  classOf[Double]),
+    VectorInfo("a2featureID",  classOf[String]),
 
     // Cols 49-55
-    IngestColumn("actgeoType",  classOf[String]),
-    IngestColumn("actfullName",  classOf[String]),
-    IngestColumn("actgcountryCode",  classOf[String]),
-    IngestColumn("actadm1Code",  classOf[String]),
-    IngestColumn("actlat",  classOf[Double]),
-    IngestColumn("actlong",  classOf[Double]),
-    IngestColumn("actfeatureID",  classOf[String]),
+    VectorInfo("actgeoType",  classOf[String]),
+    VectorInfo("actfullName",  classOf[String]),
+    VectorInfo("actgcountryCode",  classOf[String]),
+    VectorInfo("actadm1Code",  classOf[String]),
+    VectorInfo("actlat",  classOf[Double]),
+    VectorInfo("actlong",  classOf[Double]),
+    VectorInfo("actfeatureID",  classOf[String]),
 
     // Cols 56-59
-    IngestColumn("dateAdded",  classOf[String]),
-    IngestColumn("a1fullLocation",  classOf[String]),
-    IngestColumn("a2fullLocation",  classOf[String]),
-    IngestColumn("actfullLocation",  classOf[String])
+    VectorInfo("dateAdded",  classOf[String]),
+    VectorInfo("a1fullLocation",  classOf[String]),
+    VectorInfo("a2fullLocation",  classOf[String]),
+    VectorInfo("actfullLocation",  classOf[String])
   )
 }
 
@@ -100,7 +101,7 @@ object GdeltDataTableImporter extends App with LocalConnector {
 
   // Parse each line into a case class
   println("Ingesting, each dot equals 1000 records...")
-  val builder = new RowToColumnBuilder(GdeltSchema.schema, ArrayStringRowSupport)
+  val builder = new RowToVectorBuilder(GdeltSchema.schema)
   var recordCount = 0L
   var rowId = 0
   var shard = 0
@@ -108,9 +109,11 @@ object GdeltDataTableImporter extends App with LocalConnector {
     lineIter.grouped(1000)
             .foreach { records =>
               recordCount += records.length
-              records.foreach { r => builder.addRow(r) }
-              val columnToBytes = builder.convertToBytes()
-              Await.result(DataTableRecord.insertOneRow("gdelt", 0, shard, rowId, columnToBytes), 10 seconds)
+              records.toSeq.map(ArrayStringRowReader).foreach{ r =>builder.addRow(r)}
+              //records.foreach { r => builder.addRow(r) }
+              val columnBytes = builder.convertToBytes()
+              //val columnToBytes = builder
+              Await.result(DataTableRecord.insertOneRow("gdelt", 0, shard, rowId, columnBytes), 10 seconds)
               // analyzeData()
               print(".")
               builder.reset()
@@ -124,13 +127,14 @@ object GdeltDataTableImporter extends App with LocalConnector {
   }
   println(s"Done in ${elapsed} secs, ${recordCount / elapsed} records/sec")
   println(s"shard = $shard   rowId = $rowId")
-  println(s"# of SimpleColumns: ${SimpleEncoders.count}")
-  println(s"# of DictEncodingColumns: ${DictEncodingEncoders.count}")
+  //println(s"# of SimpleColumns: ${SimpleEncoders.count}")
+  //println(s"# of DictEncodingColumns: ${DictEncodingEncoders.count}")
 
   private def analyzeData() {
     println("\n---")
     GdeltSchema.schema.map(_.name).zip(builder.builders).foreach { case (name, builder) =>
-      println(s"  name: $name \t#NAbits: ${builder.naMask.size} \tcardinality: ${builder.data.toSet.size}")
+      //println(s"  name: $name \t#NAbits: ${builder.naMask.size}")
+      println(s"  name: $name ")
     }
   }
 }
@@ -172,16 +176,16 @@ object GdeltDataTableQuery extends App with LocalConnector {
   println("Shard and column count stats: " + counter)
   println("Total bytes read: " + counter.bytesRead.values.sum)
 
-  import ColumnParser._
+  //import ColumnParser._
 
   println("Querying just monthYear column out of 20, counting # of elements...")
   val (result2, elapsed2) = GdeltRecord.elapsed {
     (0 to 40).foldLeft(0) { (acc, shard) =>
       val f = DataTableRecord.readSelectColumns("gdelt", 0, shard, List("monthYear")) run (
                 Iteratee.fold(0) { (acc, x: DataTableRecord.ColRowBytes) =>
-                  val col = ColumnParser.parse[Int](x._3)
+                  //val col = ColumnParser.parse[Int](x._3)
                   var count = 0
-                  col.foreach { monthYear => count += 1 }
+                  //col.foreach { monthYear => count += 1 }
                   acc + count
                 } )
       acc + Await.result(f, 5000 seconds)
@@ -195,8 +199,8 @@ object GdeltDataTableQuery extends App with LocalConnector {
     (0 to 40).foreach { shard =>
       val f = DataTableRecord.readSelectColumns("gdelt", 0, shard, List("monthYear")) run (
                 Iteratee.fold(0) { (acc, x: DataTableRecord.ColRowBytes) =>
-                  val col = ColumnParser.parse[Int](x._3)
-                  col.foreach { monthYear => myCount(monthYear) += 1 }
+                  //val col = ColumnParser.parse[Int](x._3)
+                  //col.foreach { monthYear => myCount(monthYear) += 1 }
                   0
                 } )
       Await.result(f, 5000 seconds)

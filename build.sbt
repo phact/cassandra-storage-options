@@ -14,7 +14,7 @@ resolvers ++= Seq(
 libraryDependencies ++= Seq(
   "com.opencsv"           % "opencsv"           % "3.3",
   // "org.capnproto"         % "runtime"           % "0.1.0",
-  "org.velvia.filo"      %% "filo-scala"        % "0.1.3",
+  "org.velvia.filo"      %% "filo-scala"        % "0.2.4",
   "com.websudos"         %% "phantom-dsl"       % phantomVersion,
   "com.websudos"         %% "phantom-zookeeper" % phantomVersion exclude(
                             "com.twitter", "finagle-zookeeper_2.10")

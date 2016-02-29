@@ -72,6 +72,25 @@ object DataTableRecord extends DataTableRecord with LocalConnector {
     batch.future()
   }
 
+  def insertTextRow(dataset: String, version: Int, shard:Int, rowId: Int, columnsText: Map[String,String]): Future[ResultSet]={
+    // NOTE: This is actually a good use of Unlogged Batch, because all of the inserts
+    // are to the same partition key, so they will get collapsed down into one insert
+    // for efficiency.
+    val batch = UnloggedBatchStatement()
+    columnsText.foreach { case (columnName, text) =>
+      // Sucks, it seems that reusing a partially prepared query doesn't work.
+      // Issue filed: https://github.com/websudos/phantom/issues/166
+      batch.add(insert.value(_.dataset, dataset)
+                      .value(_.version, version)
+                      .value(_.shard,   shard)
+                      .value(_.rowId,   rowId)
+                      .value(_.columnName, columnName)
+                      //.value(_.bytes, bytes)
+      )
+    }
+    batch.future()
+  }
+
   // The tuple type returned by the low level readColumns API in the Enumerator
   type ColRowBytes = (String, Int, ByteBuffer)
 
