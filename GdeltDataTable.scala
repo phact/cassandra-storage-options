@@ -99,22 +99,85 @@ object GdeltDataTableImporter extends App with LocalConnector {
   val reader = new CSVReader(new BufferedReader(new FileReader(gdeltFilePath)), '\t')
   val lineIter = new LineReader(reader)
 
+  val r2 = new CSVReader(new BufferedReader(new FileReader(gdeltFilePath)), '\t')
+  val l2 = new LineReader(r2)
+
+
+
+
+
   // Parse each line into a case class
   println("Ingesting, each dot equals 1000 records...")
   val builder = new RowToVectorBuilder(GdeltSchema.schema)
   var recordCount = 0L
   var rowId = 0
   var shard = 0
+
+  var groupCount = 0
+
+
+  def writeGroup ()= {
+    val columnBytes = builder.convertToBytes()
+    groupCount=0
+    Await.result(DataTableRecord.insertOneRow("gdelt", 0, shard, rowId, columnBytes), 10 seconds)
+    print(".")
+    builder.reset()
+    rowId += 1
+    if (rowId >= 100) {
+      // After 100 * 1000 rows, go to the next shard.
+      shard += 1
+      rowId = 0
+    }
+  }
+
+  val (_, elapsed) = GdeltRecord.elapsed {
+    while(l2.hasNext){
+      if (groupCount <1000){
+        groupCount+=1
+        recordCount +=1
+        val record = l2.next()
+        builder.addRow(ArrayStringRowReader(record))
+
+      }else{
+        writeGroup()
+        groupCount+=1
+        recordCount +=1
+        val record = l2.next()
+        builder.addRow(ArrayStringRowReader(record))
+        //println("shard: "+shard)
+        //println("row: "+rowId)
+      }
+      /*
+      line.toSeq.map(ArrayStringRowReader).foreach{r =>
+        lineCount = lineCount + 1
+      }
+      */
+    }
+  }
+  writeGroup()
+  //println(recordCount)
+
+
+/*
   val (_, elapsed) = GdeltRecord.elapsed {
     lineIter.grouped(1000)
             .foreach { records =>
               recordCount += records.length
-              records.toSeq.map(ArrayStringRowReader).foreach{ r =>builder.addRow(r)}
+              records.toSeq.map(ArrayStringRowReader).foreach{
+                r =>
+                  builder.addRow(r)
+              }
               //records.foreach { r => builder.addRow(r) }
               val columnBytes = builder.convertToBytes()
+              //columnBytes is a Map of column names and bytebuffers. The bytebuffers contain the values for each row for the given column.
+              //println("Column names:  " + columnBytes.keys)
+              //println("Column names and byte buffer pointers" + columnBytes)
+              //println("Values in the byteBuffer for globalEventId: " + FiloVector[String](columnBytes("globalEventId")))
+              println("first globalEventId in this group: "+ FiloVector[String](columnBytes("globalEventId")).headOption)
+              println("last globalEventId in this group: "+ FiloVector[String](columnBytes("globalEventId")).last)
               //val columnToBytes = builder
               Await.result(DataTableRecord.insertOneRow("gdelt", 0, shard, rowId, columnBytes), 10 seconds)
-              // analyzeData()
+              //analyzeData()
               print(".")
               builder.reset()
               rowId += 1
@@ -123,8 +186,14 @@ object GdeltDataTableImporter extends App with LocalConnector {
                 shard += 1
                 rowId = 0
               }
+              //println("shard: "+shard)
+              //println("row: "+rowId)
+              if (rowId==31 && shard ==4){
+                println(records.toSeq.length)
+              }
             }
   }
+  */
   println(s"Done in ${elapsed} secs, ${recordCount / elapsed} records/sec")
   println(s"shard = $shard   rowId = $rowId")
   //println(s"# of SimpleColumns: ${SimpleEncoders.count}")
@@ -144,36 +213,52 @@ object GdeltDataTableQuery extends App with LocalConnector {
   import collection.mutable.HashMap
   import collection.mutable.{Map => MMap}
 
-  case class RecordCounter(maxRowIdMap: MMap[Int, Int] = HashMap.empty.withDefaultValue(0),
-                           colCount: MMap[String, Int] = HashMap.empty.withDefaultValue(0),
-                           bytesRead: MMap[String, Long] = HashMap.empty.withDefaultValue(0L)) {
-    def addRowIdForShard(shard: Int, rowId: Int) {
-      maxRowIdMap(shard) = Math.max(maxRowIdMap(shard), rowId)
-    }
+  case class RecordCounter(
+      maxRowIdMap: MMap[Int, Int] = HashMap.empty.withDefaultValue(0),
+      colCount: MMap[String, Int] = HashMap.empty.withDefaultValue(0),
+      bytesRead: MMap[String, Long] = HashMap.empty.withDefaultValue(0L)) {
+        def addRowIdForShard(shard: Int, rowId: Int) {
+          maxRowIdMap(shard) = Math.max(maxRowIdMap(shard), rowId)
+        }
 
-    def addColCount(column: String) { colCount(column) += 1 }
+        def addColCount(column: String) {
+          colCount(column) += 1
+        }
 
-    def addColBytes(column: String, bytes: Long) { bytesRead(column) += bytes }
-  }
+        def addColBytes(column: String, bytes: Long) { bytesRead(column) += bytes }
+      }
 
   // NOTE: we are cheating since I know beforehand there are 40 shards.
   // Gather some statistics to make sure we are indeed reading every row and shard
   println("Querying every column (full export)...")
   val counter = RecordCounter()
   val (result, elapsed) = GdeltRecord.elapsed {
-    (0 to 40).foldLeft(0) { (acc, shard) =>
+    (0 to 40).foldLeft(0) { (timerAcc, shard) =>
       val f = DataTableRecord.readAllColumns("gdelt", 0, shard) run (
                 Iteratee.fold(0) { (acc, x: DataTableRecord.ColRowBytes) =>
+                  /*
+                  println("Column/Row combination"+x)
+                  if (x._1=="year"){
+                    println("value "+ FiloVector[Int](x._3))
+                    println("count: "+ FiloVector[Int](x._3).length)
+                  }
+                  */
                   counter.addRowIdForShard(shard, x._2)
                   counter.addColCount(x._1)
                   counter.addColBytes(x._1, x._3.remaining.toLong)
-                acc + 1 }
+                  //println(acc)
+                  acc + 1
+                }
               )
-      acc + Await.result(f, 5000 seconds)
+      //println("time so far: "+timerAcc)
+      timerAcc + Await.result(f, 5000 seconds)
     }
   }
   println(s".... got count of $result in $elapsed seconds")
-  println("Shard and column count stats: " + counter)
+  //println(s"column count values: "+ counter.colCount.values)
+  println(s"max row Ids "+ counter.maxRowIdMap)
+  println(s"sum of row Ids"+ counter.maxRowIdMap.values.sum)
+  //println("Shard and column count stats: " + counter)
   println("Total bytes read: " + counter.bytesRead.values.sum)
 
   //import ColumnParser._
@@ -183,9 +268,11 @@ object GdeltDataTableQuery extends App with LocalConnector {
     (0 to 40).foldLeft(0) { (acc, shard) =>
       val f = DataTableRecord.readSelectColumns("gdelt", 0, shard, List("monthYear")) run (
                 Iteratee.fold(0) { (acc, x: DataTableRecord.ColRowBytes) =>
-                  //val col = ColumnParser.parse[Int](x._3)
+                  val col = FiloVector[Int](x._3)
                   var count = 0
-                  //col.foreach { monthYear => count += 1 }
+                  col.foreach { monthYear => count += 1 }
+                  //each should be 1000 except the last since that's how we chunked them on write.
+                  //println(count)
                   acc + count
                 } )
       acc + Await.result(f, 5000 seconds)
@@ -199,8 +286,8 @@ object GdeltDataTableQuery extends App with LocalConnector {
     (0 to 40).foreach { shard =>
       val f = DataTableRecord.readSelectColumns("gdelt", 0, shard, List("monthYear")) run (
                 Iteratee.fold(0) { (acc, x: DataTableRecord.ColRowBytes) =>
-                  //val col = ColumnParser.parse[Int](x._3)
-                  //col.foreach { monthYear => myCount(monthYear) += 1 }
+                  val col = FiloVector[Int](x._3)
+                  col.foreach { monthYear => myCount(monthYear) += 1 }
                   0
                 } )
       Await.result(f, 5000 seconds)
