@@ -26,7 +26,7 @@ case class DataTableModel(dataset: String,
 sealed class DataTableRecord extends CassandraTable[DataTableRecord, DataTableModel] {
   object dataset extends StringColumn(this) with PartitionKey[String]
   object version extends IntColumn(this) with PartitionKey[Int]
-  object shard extends IntColumn(this) with PartitionKey[Int]
+  object timebucket extends IntColumn(this) with PartitionKey[Int]
   object columnName extends StringColumn(this) with PrimaryKey[String]
   object rowId extends IntColumn(this) with PrimaryKey[Int]
   object bytes extends BlobColumn(this)
@@ -34,7 +34,7 @@ sealed class DataTableRecord extends CassandraTable[DataTableRecord, DataTableMo
   override def fromRow(row: Row): DataTableModel =
     DataTableModel(dataset(row),
                    version(row),
-                   shard(row),
+                   timebucket(row),
                    columnName(row),
                    rowId(row),
                    bytes(row))
@@ -48,12 +48,12 @@ object DataTableRecord extends DataTableRecord with LocalConnector {
    * rows.
    * @param dataset the name of the dataset to write to
    * @param version the version of the data to write to
-   * @param shard the shard number
+   * @param timebucket the time bucket
    * @param rowId the integer starting rowId of the batch of data.
    * @param columnsBytes a Map of column names to the bytes to write for that column
    * @returns a Future[ResultSet]
    */
-  def insertOneRow(dataset: String, version: Int, shard: Int, rowId: Int,
+  def insertOneRow(dataset: String, version: Int, timebucket: Int, rowId: Int,
                    columnsBytes: Map[String, ByteBuffer]): Future[ResultSet] = {
     // NOTE: This is actually a good use of Unlogged Batch, because all of the inserts
     // are to the same partition key, so they will get collapsed down into one insert
@@ -64,7 +64,7 @@ object DataTableRecord extends DataTableRecord with LocalConnector {
       // Issue filed: https://github.com/websudos/phantom/issues/166
       batch.add(insert.value(_.dataset, dataset)
                       .value(_.version, version)
-                      .value(_.shard,   shard)
+                      .value(_.timebucket,   timebucket)
                       .value(_.rowId,   rowId)
                       .value(_.columnName, columnName)
                       .value(_.bytes, bytes))
@@ -82,7 +82,7 @@ object DataTableRecord extends DataTableRecord with LocalConnector {
       // Issue filed: https://github.com/websudos/phantom/issues/166
       batch.add(insert.value(_.dataset, dataset)
                       .value(_.version, version)
-                      .value(_.shard,   shard)
+                      .value(_.timebucket,   shard)
                       .value(_.rowId,   rowId)
                       .value(_.columnName, columnName)
                       //.value(_.bytes, bytes)
@@ -110,13 +110,12 @@ object DataTableRecord extends DataTableRecord with LocalConnector {
   def readSelectColumns(dataset: String, version: Int, shard: Int, columns: List[String]):
       Enumerator[ColRowBytes] = {
     // NOTE: Cassandra does not allow using IN operator on one part of the clustering key.
-    // Grrrr.
     // For now just make it work for one column, but TODO to read from multiple columns
     // using multiple parallel read commands, which can be ZIPped together or JOINed together.
     require(columns.length == 1, "Only works with one column for now")
     select(_.columnName, _.rowId, _.bytes).where(_.dataset eqs dataset)
                                           .and(_.version eqs version)
-                                          .and(_.shard eqs shard)
+                                          .and(_.timebucket eqs shard)
                                           // .and(_.columnName in columns)
                                           .and(_.columnName eqs columns.head)
                                           .fetchEnumerator
@@ -135,7 +134,7 @@ object DataTableRecord extends DataTableRecord with LocalConnector {
   def readAllColumns(dataset: String, version: Int, shard: Int): Enumerator[ColRowBytes] = {
     select(_.columnName, _.rowId, _.bytes).where(_.dataset eqs dataset)
                                           .and(_.version eqs version)
-                                          .and(_.shard eqs shard)
+                                          .and(_.timebucket eqs shard)
                                           .fetchEnumerator
   }
 }
