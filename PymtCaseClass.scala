@@ -371,25 +371,28 @@ object PymtCaseClassImporter extends App with LocalConnector {
   var recordCount = 0L
 
   var groupCount = 0
+  var records = Seq[PymtModel]()
   val (_,elapsed) = PymtRecord.elapsed{
     while (fileIter.hasNext){
       if (groupCount <1000){
         groupCount+=1
         recordCount +=1
-        val record = l2.next()
-        Await.result(PymtRecord.insertRecords(record), 10 seconds)
-        print(".")
-
+        val record = fileIter.next()
+        records = records :+ record
+        //println(record)
       }else{
-        writeGroup()
-        groupCount+=1
+        groupCount=0
         recordCount +=1
-        val record = l2.next()
-        Await.result(PymtRecord.insertRecords(record), 10 seconds)
+        //print(records)
+        Await.result(PymtRecord.insertRecords(records), 10 seconds)
+        print(".")
+        val record = fileIter.next()
+        records = Seq()
+        records:+ record
       }
     }
   }
-  val (_, elapsed) = PymtRecord.elapsed {
+  /*val (_, elapsed) = PymtRecord.elapsed {
     fileIter.grouped(1000)
             .foreach { records =>
               recordCount += records.length
@@ -397,6 +400,7 @@ object PymtCaseClassImporter extends App with LocalConnector {
               print(".")
             }
   }
+  */
   println(s"Done in ${elapsed} secs, ${recordCount / elapsed} records/sec")
 }
 
